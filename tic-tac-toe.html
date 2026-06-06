@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tic-Tac-Toe+</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #1a1a2e;
+      color: #eee;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      gap: 24px;
+      padding: 20px;
+    }
+
+    h1 { font-size: 2rem; letter-spacing: 0.1em; color: #e94560; }
+
+    /* ── Setup ── */
+    #setup {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 28px;
+      width: 100%;
+      max-width: 440px;
+    }
+
+    .option-group { width: 100%; }
+
+    .opt-label {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #555;
+      margin-bottom: 8px;
+    }
+
+    .opts { display: flex; gap: 8px; }
+
+    button.opt {
+      flex: 1;
+      padding: 10px 8px;
+      background: #16213e;
+      color: #999;
+      border: 2px solid transparent;
+      border-radius: 8px;
+      font-size: 0.88rem;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    button.opt:hover { background: #0f3460; color: #eee; }
+    button.opt.sel   { border-color: #e94560; color: #eee; background: #0f3460; }
+
+    #remote-panel {
+      background: #16213e;
+      border-radius: 12px;
+      padding: 18px;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+    }
+    #remote-panel p { color: #666; font-size: 0.86rem; text-align: center; line-height: 1.5; }
+    #remote-status  { color: #a8dadc; font-size: 0.88rem; min-height: 1.3em; text-align: center; }
+
+    button.primary {
+      padding: 12px 36px;
+      background: #e94560;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 1.05rem;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    button.primary:hover { background: #c73652; transform: scale(1.04); }
+
+    button.secondary {
+      padding: 10px 22px;
+      background: #16213e;
+      color: #888;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    button.secondary:hover { background: #0f3460; color: #eee; }
+
+    /* ── Game ── */
+    #game {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 18px;
+    }
+
+    #mode-badge { font-size: 0.78rem; color: #444; letter-spacing: 0.06em; }
+
+    #status {
+      font-size: 1.2rem;
+      min-height: 1.5em;
+      color: #a8dadc;
+      text-align: center;
+    }
+
+    /* ── Timers ── */
+    #timers { display: flex; gap: 48px; align-items: center; }
+
+    .timer-block { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+
+    .timer-label { font-size: 0.72rem; letter-spacing: 0.08em; color: #555; }
+
+    .timer-ring { position: relative; width: 72px; height: 72px; }
+    .timer-ring svg { transform: rotate(-90deg); }
+    .timer-ring .bg  { stroke: #16213e; }
+    .timer-ring .arc { transition: stroke-dashoffset 0.9s linear; stroke-linecap: round; }
+    .timer-ring.x .arc { stroke: #e94560; }
+    .timer-ring.o .arc { stroke: #a8dadc; }
+
+    .timer-digits {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.3rem; font-weight: bold;
+    }
+    .timer-ring.x .timer-digits { color: #e94560; }
+    .timer-ring.o .timer-digits { color: #a8dadc; }
+
+    .timer-ring.low .arc        { stroke: #ff6b35 !important; }
+    .timer-ring.low .timer-digits { color: #ff6b35; animation: blink 0.6s step-end infinite; }
+    .timer-ring.inactive { opacity: 0.35; }
+
+    @keyframes blink { 50% { opacity: 0.3; } }
+
+    /* ── Board ── */
+    #board { display: grid; }
+
+    .cell {
+      background: #16213e;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+      user-select: none;
+    }
+    .cell:hover:not(.taken) { background: #0f3460; transform: scale(1.04); }
+    .cell.x   { color: #e94560; }
+    .cell.o   { color: #a8dadc; }
+    .cell.win { background: #0f3460; animation: pulse 0.5s ease; }
+
+    @keyframes pulse {
+      0%   { transform: scale(1); }
+      50%  { transform: scale(1.15); }
+      100% { transform: scale(1); }
+    }
+
+    /* ── Scoreboard ── */
+    #scoreboard { display: flex; gap: 28px; }
+
+    .score-box {
+      text-align: center;
+      background: #16213e;
+      padding: 10px 18px;
+      border-radius: 8px;
+    }
+    .score-box .lbl { color: #444; font-size: 0.75rem; letter-spacing: 0.05em; }
+    .score-box .val { font-size: 1.5rem; font-weight: bold; margin-top: 2px; }
+    .score-box.x    .val { color: #e94560; }
+    .score-box.o    .val { color: #a8dadc; }
+    .score-box.draw .val { color: #555; }
+
+    .btn-row { display: flex; gap: 12px; }
+
+    /* ── Confetti ── */
+    #confetti-canvas { position: fixed; inset: 0; pointer-events: none; z-index: 999; }
+  </style>
+</head>
+<body>
+
+  <!-- ══ Setup Screen ══ -->
+  <div id="setup">
+    <h1>Tic-Tac-Toe+</h1>
+
+    <div class="option-group">
+      <div class="opt-label">Board Size</div>
+      <div class="opts" id="size-opts">
+        <button class="opt sel" data-val="3">3×3 Classic</button>
+        <button class="opt"     data-val="5">5×5 Extended</button>
+      </div>
+    </div>
+
+    <div class="option-group">
+      <div class="opt-label">Opponent</div>
+      <div class="opts" id="mode-opts">
+        <button class="opt sel" data-val="local">Local Player</button>
+        <button class="opt"     data-val="ai">Computer</button>
+        <button class="opt"     data-val="remote">Remote Tab</button>
+      </div>
+    </div>
+
+    <div id="remote-panel" style="display:none">
+      <p>Open this file in another browser tab, then one player hosts and the other joins.</p>
+      <div class="opts">
+        <button class="opt" id="host-btn">Host (play X)</button>
+        <button class="opt" id="join-btn">Join (play O)</button>
+      </div>
+      <div id="remote-status"></div>
+    </div>
+
+    <button class="primary" id="start-btn">Start Game</button>
+  </div>
+
+  <!-- ══ Game Screen ══ -->
+  <div id="game">
+    <h1>Tic-Tac-Toe+</h1>
+    <div id="mode-badge"></div>
+    <div id="status"></div>
+
+    <div id="timers">
+      <div class="timer-block">
+        <div class="timer-label">PLAYER X</div>
+        <div class="timer-ring x" id="ring-x">
+          <svg width="72" height="72" viewBox="0 0 72 72">
+            <circle class="bg"  cx="36" cy="36" r="30" fill="none" stroke-width="6"/>
+            <circle class="arc" cx="36" cy="36" r="30" fill="none" stroke-width="6"
+              stroke-dasharray="188.5" stroke-dashoffset="0" id="arc-x"/>
+          </svg>
+          <div class="timer-digits" id="digits-x">60</div>
+        </div>
+      </div>
+      <div class="timer-block">
+        <div class="timer-label">PLAYER O</div>
+        <div class="timer-ring o inactive" id="ring-o">
+          <svg width="72" height="72" viewBox="0 0 72 72">
+            <circle class="bg"  cx="36" cy="36" r="30" fill="none" stroke-width="6"/>
+            <circle class="arc" cx="36" cy="36" r="30" fill="none" stroke-width="6"
+              stroke-dasharray="188.5" stroke-dashoffset="0" id="arc-o"/>
+          </svg>
+          <div class="timer-digits" id="digits-o">60</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="board"></div>
+
+    <div id="scoreboard">
+      <div class="score-box x">
+        <div class="lbl">X WINS</div>
+        <div class="val" id="score-x">0</div>
+      </div>
+      <div class="score-box draw">
+        <div class="lbl">DRAWS</div>
+        <div class="val" id="score-d">0</div>
+      </div>
+      <div class="score-box o">
+        <div class="lbl">O WINS</div>
+        <div class="val" id="score-o">0</div>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="primary"   id="btn-reset">New Game</button>
+      <button class="secondary" id="btn-menu">← Menu</button>
+    </div>
+  </div>
+
+  <canvas id="confetti-canvas"></canvas>
+
+  <script>
+    /* ══════════════════════════════════════════
+       CONSTANTS
+    ══════════════════════════════════════════ */
+    const MAX_TIME = 60;
+    const CIRC     = 188.5; // 2π × 30
+
+    /* ══════════════════════════════════════════
+       CONFIGURATION  (set on setup screen)
+    ══════════════════════════════════════════ */
+    let cfg = { size: 3, winLen: 3, mode: 'local', side: 'X' };
+
+    /* ══════════════════════════════════════════
+       GAME STATE
+    ══════════════════════════════════════════ */
+    let board, current, over;
+    let scores    = { X: 0, O: 0, D: 0 };
+    let timeLeft  = {};
+    let timerInt  = null;
+    let ALL_LINES = [];
+    let aiPending = false;
+
+    /* ══════════════════════════════════════════
+       SETUP SCREEN — option pickers
+    ══════════════════════════════════════════ */
+    document.querySelectorAll('#size-opts .opt').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('#size-opts .opt').forEach(b => b.classList.remove('sel'));
+        btn.classList.add('sel');
+        cfg.size   = +btn.dataset.val;
+        cfg.winLen = cfg.size === 3 ? 3 : 4;
+      });
+    });
+
+    document.querySelectorAll('#mode-opts .opt').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('#mode-opts .opt').forEach(b => b.classList.remove('sel'));
+        btn.classList.add('sel');
+        cfg.mode = btn.dataset.val;
+        const remote = cfg.mode === 'remote';
+        document.getElementById('remote-panel').style.display = remote ? 'flex'  : 'none';
+        document.getElementById('start-btn').style.display    = remote ? 'none'  : 'block';
+      });
+    });
+
+    document.getElementById('host-btn').addEventListener('click', hostGame);
+    document.getElementById('join-btn').addEventListener('click', joinGame);
+    document.getElementById('start-btn').addEventListener('click', () => startGame());
+    document.getElementById('btn-reset').addEventListener('click', () => resetGame(false));
+    document.getElementById('btn-menu').addEventListener('click', backToMenu);
+
+    /* ══════════════════════════════════════════
+       BROADCAST CHANNEL — remote multiplayer
+       Protocol:
+         join  → joiner announces to host
+         ready → host confirms, sends config
+         move  → { index } a placed piece
+         reset → request a new round
+    ══════════════════════════════════════════ */
+    let ch = null;
+
+    function openChannel() {
+      if (ch) ch.close();
+      ch = new BroadcastChannel('ttt-plus-v1');
+      ch.onmessage = ({ data: msg }) => {
+        switch (msg.type) {
+          case 'join':
+            // We are the host — confirm and start
+            ch.postMessage({ type: 'ready', size: cfg.size, winLen: cfg.winLen });
+            cfg.side = 'X';
+            setRemoteStatus('Opponent joined! Starting as X…');
+            setTimeout(startGame, 700);
+            break;
+          case 'ready':
+            // We are the joiner — adopt host config and start
+            cfg.size   = msg.size;
+            cfg.winLen = msg.winLen;
+            cfg.side   = 'O';
+            setRemoteStatus('Connected! You are O.');
+            setTimeout(startGame, 700);
+            break;
+          case 'move':
+            applyMove(msg.index, false);
+            break;
+          case 'reset':
+            resetGame(true);
+            break;
+        }
+      };
+    }
+
+    function hostGame() {
+      cfg.side = 'X';
+      openChannel();
+      setRemoteStatus('Waiting for someone to join…');
+    }
+
+    function joinGame() {
+      cfg.side = 'O';
+      openChannel();
+      setRemoteStatus('Looking for host…');
+      ch.postMessage({ type: 'join' });
+    }
+
+    function setRemoteStatus(text) {
+      document.getElementById('remote-status').textContent = text;
+    }
+
+    /* ══════════════════════════════════════════
+       GAME LIFECYCLE
+    ══════════════════════════════════════════ */
+    function startGame() {
+      document.getElementById('setup').style.display = 'none';
+      document.getElementById('game').style.display  = 'flex';
+
+      const modeLabel = { local: 'Local 2-Player', ai: 'vs Computer (you are X)', remote: `Remote — you are ${cfg.side}` }[cfg.mode];
+      const sizeLabel = cfg.size === 5 ? ' · 5×5 · get 4 in a row' : ' · 3×3 · get 3 in a row';
+      document.getElementById('mode-badge').textContent = modeLabel + sizeLabel;
+
+      ALL_LINES = computeLines(cfg.size, cfg.winLen);
+
+      board    = Array(cfg.size * cfg.size).fill(null);
+      current  = 'X';
+      over     = false;
+      scores   = { X: 0, O: 0, D: 0 };
+      timeLeft = { X: MAX_TIME, O: MAX_TIME };
+      aiPending = false;
+
+      buildBoard();
+      updateScores();
+      renderTimer('X');
+      renderTimer('O');
+      document.getElementById('ring-x').classList.remove('inactive');
+      document.getElementById('ring-o').classList.add('inactive');
+      setStatus("X's turn");
+
+      startTimer();
+    }
+
+    function buildBoard() {
+      const el   = document.getElementById('board');
+      el.innerHTML = '';
+      const cs   = cfg.size === 3 ? 100 : 72;
+      const gap  = cfg.size === 3 ? 8   : 6;
+      const fs   = cfg.size === 3 ? '2.8rem' : '1.8rem';
+      el.style.cssText = `grid-template-columns:repeat(${cfg.size},${cs}px);grid-template-rows:repeat(${cfg.size},${cs}px);gap:${gap}px`;
+      for (let i = 0; i < cfg.size * cfg.size; i++) {
+        const c = document.createElement('div');
+        c.className      = 'cell';
+        c.dataset.i      = i;
+        c.style.fontSize = fs;
+        c.addEventListener('click', onCellClick);
+        el.appendChild(c);
+      }
+    }
+
+    function backToMenu() {
+      clearInterval(timerInt);
+      stopConfetti();
+      if (ch) { ch.close(); ch = null; }
+
+      cfg.mode = 'local';
+      document.getElementById('game').style.display        = 'none';
+      document.getElementById('setup').style.display       = 'flex';
+      document.getElementById('remote-panel').style.display = 'none';
+      document.getElementById('start-btn').style.display    = 'block';
+      document.getElementById('remote-status').textContent  = '';
+      document.querySelectorAll('#mode-opts .opt').forEach(b => b.classList.toggle('sel', b.dataset.val === 'local'));
+    }
+
+    /* ══════════════════════════════════════════
+       MOVE HANDLING
+    ══════════════════════════════════════════ */
+    function onCellClick(e) {
+      const i = +e.currentTarget.dataset.i;
+      if (over || board[i] || aiPending)                    return;
+      if (cfg.mode === 'remote' && current !== cfg.side)    return;
+      if (cfg.mode === 'ai'     && current === 'O')         return;
+      applyMove(i, true);
+    }
+
+    function applyMove(i, local) {
+      if (over || board[i]) return;
+
+      board[i] = current;
+      const cells = document.querySelectorAll('.cell');
+      cells[i].textContent = current;
+      cells[i].classList.add(current.toLowerCase(), 'taken');
+
+      if (local && cfg.mode === 'remote' && ch) {
+        ch.postMessage({ type: 'move', index: i });
+      }
+
+      const winLine = checkWinner(board);
+
+      if (winLine) {
+        clearInterval(timerInt);
+        winLine.forEach(j => cells[j].classList.add('win'));
+        setStatus(`${current} wins!`);
+        scores[current]++;
+        updateScores();
+        over = true;
+        launchConfetti(current);
+      } else if (board.every(Boolean)) {
+        clearInterval(timerInt);
+        setStatus("It's a draw!");
+        scores.D++;
+        updateScores();
+        over = true;
+      } else {
+        current = current === 'X' ? 'O' : 'X';
+        setStatus(`${current}'s turn`);
+        switchTimer();
+        if (cfg.mode === 'ai' && current === 'O' && !over) {
+          setStatus('Computer thinking…');
+          aiPending = true;
+          setTimeout(doAIMove, 450);
+        }
+      }
+    }
+
+    function resetGame(fromRemote) {
+      clearInterval(timerInt);
+      stopConfetti();
+      aiPending = false;
+
+      board    = Array(cfg.size * cfg.size).fill(null);
+      current  = 'X';
+      over     = false;
+      timeLeft = { X: MAX_TIME, O: MAX_TIME };
+
+      renderTimer('X');
+      renderTimer('O');
+      document.getElementById('ring-x').classList.remove('inactive');
+      document.getElementById('ring-o').classList.add('inactive');
+      setStatus("X's turn");
+
+      const fs = cfg.size === 3 ? '2.8rem' : '1.8rem';
+      document.querySelectorAll('.cell').forEach(c => {
+        c.textContent    = '';
+        c.className      = 'cell';
+        c.style.fontSize = fs;
+      });
+
+      if (!fromRemote && cfg.mode === 'remote' && ch) {
+        ch.postMessage({ type: 'reset' });
+      }
+
+      startTimer();
+    }
+
+    function setStatus(text) { document.getElementById('status').textContent = text; }
+
+    function updateScores() {
+      document.getElementById('score-x').textContent = scores.X;
+      document.getElementById('score-o').textContent = scores.O;
+      document.getElementById('score-d').textContent = scores.D;
+    }
+
+    /* ══════════════════════════════════════════
+       WIN DETECTION
+    ══════════════════════════════════════════ */
+    function computeLines(size, winLen) {
+      const lines = [];
+      for (let r = 0; r < size; r++)
+        for (let c = 0; c <= size - winLen; c++)
+          lines.push(Array.from({ length: winLen }, (_, k) => r * size + c + k));           // →
+      for (let c = 0; c < size; c++)
+        for (let r = 0; r <= size - winLen; r++)
+          lines.push(Array.from({ length: winLen }, (_, k) => (r + k) * size + c));         // ↓
+      for (let r = 0; r <= size - winLen; r++) {
+        for (let c = 0; c <= size - winLen; c++)
+          lines.push(Array.from({ length: winLen }, (_, k) => (r + k) * size + c + k));     // ↘
+        for (let c = winLen - 1; c < size; c++)
+          lines.push(Array.from({ length: winLen }, (_, k) => (r + k) * size + c - k));     // ↙
+      }
+      return lines;
+    }
+
+    function checkWinner(bd) {
+      for (const line of ALL_LINES) {
+        const v = bd[line[0]];
+        if (v && line.every(i => bd[i] === v)) return line;
+      }
+      return null;
+    }
+
+    function checkWinnerVal(bd) {
+      const line = checkWinner(bd);
+      return line ? bd[line[0]] : null;
+    }
+
+    /* ══════════════════════════════════════════
+       AI — minimax + alpha-beta pruning
+       3×3: perfect play (depth 9, full search)
+       5×5: depth 3 with candidate-move pruning
+            (only considers cells adjacent to
+             existing pieces — standard gomoku trick)
+    ══════════════════════════════════════════ */
+    function doAIMove() {
+      aiPending = false;
+      if (over || current !== 'O') return;
+      const move = getBestMove([...board]);
+      if (move !== -1) applyMove(move, false);
+    }
+
+    function getBestMove(bd) {
+      if (bd.every(v => !v)) return Math.floor(bd.length / 2); // always open center
+      const maxDepth = cfg.size === 3 ? 9 : 3;
+      let best = -Infinity, bestIdx = -1;
+      for (const i of moveCandidates(bd)) {
+        bd[i] = 'O';
+        const s = minimax(bd, 0, maxDepth, false, -Infinity, Infinity);
+        bd[i] = null;
+        if (s > best) { best = s; bestIdx = i; }
+      }
+      return bestIdx;
+    }
+
+    function minimax(bd, depth, maxDepth, isMax, alpha, beta) {
+      const w = checkWinnerVal(bd);
+      if (w === 'O') return 1000 - depth;
+      if (w === 'X') return depth - 1000;
+      const cands = moveCandidates(bd);
+      if (!cands.length || depth >= maxDepth) return evalBoard(bd);
+
+      if (isMax) {
+        let v = -Infinity;
+        for (const i of cands) {
+          bd[i] = 'O';
+          v     = Math.max(v, minimax(bd, depth + 1, maxDepth, false, alpha, beta));
+          bd[i] = null;
+          alpha = Math.max(alpha, v);
+          if (beta <= alpha) break;
+        }
+        return v;
+      } else {
+        let v = Infinity;
+        for (const i of cands) {
+          bd[i] = 'X';
+          v     = Math.min(v, minimax(bd, depth + 1, maxDepth, true, alpha, beta));
+          bd[i] = null;
+          beta  = Math.min(beta, v);
+          if (beta <= alpha) break;
+        }
+        return v;
+      }
+    }
+
+    function moveCandidates(bd) {
+      if (cfg.size === 3) {
+        return bd.reduce((a, v, i) => (v ? a : (a.push(i), a)), []);
+      }
+      // 5×5: only empty cells touching an occupied cell
+      const size = cfg.size, set = new Set();
+      for (let i = 0; i < bd.length; i++) {
+        if (!bd[i]) continue;
+        const r = (i / size) | 0, c = i % size;
+        for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
+          if (!dr && !dc) continue;
+          const nr = r + dr, nc = c + dc;
+          if (nr >= 0 && nr < size && nc >= 0 && nc < size && !bd[nr * size + nc])
+            set.add(nr * size + nc);
+        }
+      }
+      return [...set];
+    }
+
+    function evalBoard(bd) {
+      let score = 0;
+      for (const line of ALL_LINES) {
+        const vals = line.map(i => bd[i]);
+        const o = vals.filter(v => v === 'O').length;
+        const x = vals.filter(v => v === 'X').length;
+        if (o && !x) score += 10 ** (o - 1);
+        if (x && !o) score -= 10 ** (x - 1);
+      }
+      return score;
+    }
+
+    /* ══════════════════════════════════════════
+       TIMERS
+    ══════════════════════════════════════════ */
+    function renderTimer(p) {
+      const k      = p.toLowerCase();
+      const t      = timeLeft[p];
+      const offset = CIRC * (1 - t / MAX_TIME);
+      document.getElementById(`arc-${k}`).setAttribute('stroke-dashoffset', offset);
+      document.getElementById(`digits-${k}`).textContent = t;
+      document.getElementById(`ring-${k}`).classList.toggle('low', t <= 10);
+    }
+
+    function startTimer() {
+      clearInterval(timerInt);
+      timerInt = setInterval(() => {
+        if (over) { clearInterval(timerInt); return; }
+        timeLeft[current]--;
+        renderTimer(current);
+        if (timeLeft[current] <= 0) {
+          clearInterval(timerInt);
+          const winner = current === 'X' ? 'O' : 'X';
+          over = true;
+          setStatus(`⏰ Time's up! ${winner} wins!`);
+          scores[winner]++;
+          updateScores();
+          launchConfetti(winner);
+        }
+      }, 1000);
+    }
+
+    function switchTimer() {
+      document.getElementById('ring-x').classList.toggle('inactive', current !== 'X');
+      document.getElementById('ring-o').classList.toggle('inactive', current !== 'O');
+      startTimer();
+    }
+
+    /* ══════════════════════════════════════════
+       CONFETTI
+    ══════════════════════════════════════════ */
+    const canvas = document.getElementById('confetti-canvas');
+    const ctx    = canvas.getContext('2d');
+    let particles = [], animFrame = null;
+
+    const PALETTE = {
+      X: ['#e94560','#ff6b8a','#ff9eb5','#ffcdd6','#fff'],
+      O: ['#a8dadc','#48cae4','#90e0ef','#caf0f8','#fff'],
+    };
+
+    function resize() { canvas.width = innerWidth; canvas.height = innerHeight; }
+    addEventListener('resize', resize);
+    resize();
+
+    function Particle(p) {
+      const cols  = PALETTE[p];
+      this.x      = Math.random() * canvas.width;
+      this.y      = Math.random() * canvas.height - canvas.height;
+      this.w      = (Math.random() * 10 + 6) | 0;
+      this.h      = (Math.random() * 5  + 4) | 0;
+      this.color  = cols[Math.random() * cols.length | 0];
+      this.vx     = (Math.random() - 0.5) * 6;
+      this.vy     = Math.random() * 4 + 2;
+      this.angle  = Math.random() * Math.PI * 2;
+      this.spin   = (Math.random() - 0.5) * 0.3;
+      this.life   = 1;
+      this.decay  = Math.random() * 0.008 + 0.003;
+    }
+
+    function launchConfetti(p) {
+      resize();
+      particles = Array.from({ length: 180 }, () => new Particle(p));
+      if (animFrame) cancelAnimationFrame(animFrame);
+      confettiLoop();
+    }
+
+    function confettiLoop() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      particles.forEach(p => {
+        p.x     += p.vx;
+        p.y     += p.vy;
+        p.vy    += 0.12;
+        p.angle += p.spin;
+        p.life  -= p.decay;
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, p.life);
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.angle);
+        ctx.fillStyle = p.color;
+        ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+        ctx.restore();
+      });
+      particles = particles.filter(p => p.life > 0 && p.y < canvas.height + 40);
+      if (particles.length) {
+        animFrame = requestAnimationFrame(confettiLoop);
+      } else {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        animFrame = null;
+      }
+    }
+
+    function stopConfetti() {
+      if (animFrame) cancelAnimationFrame(animFrame);
+      particles  = [];
+      animFrame  = null;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+  </script>
+</body>
+</html>
